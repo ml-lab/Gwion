@@ -27,6 +27,7 @@ LIB: jack:::off::-ljack
 LIB: portaudio:::off::-lportaudio
 LIB: soundio:::off::-lsoundio
 LIB: pulse:::off::-lpulse-simple
+LIB: sles:::off::-lOpenSLES
 
 
 DIR: add:::add
