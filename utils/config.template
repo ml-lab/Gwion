@@ -28,6 +28,7 @@ LIB: portaudio:::off::-lportaudio
 LIB: soundio:::off::-lsoundio
 LIB: pulse:::off::-lpulse-simple
 LIB: sles:::off::-lOpenSLES
+LIB: aaudio:::off::-laaudio
 
 
 DIR: add:::add

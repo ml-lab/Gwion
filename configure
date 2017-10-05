@@ -95,6 +95,12 @@ begins_with_short_option()
 : "${_arg_sles_inc:=$SLES_INC}"
 : "${SLES_LIB:="-lOpenSLES"}"
 : "${_arg_sles_lib:=$SLES_LIB}"
+: "${AAUDIO_D:=off}"
+: "${_arg_aaudio:=$AAUDIO_D}"
+: "${AAUDIO_INC:=}"
+: "${_arg_aaudio_inc:=$AAUDIO_INC}"
+: "${AAUDIO_LIB:="-laaudio"}"
+: "${_arg_aaudio_lib:=$AAUDIO_LIB}"
 : "${ADD_DIR:="add"}"
 : "${_arg_add:=$ADD_DIR}"
 : "${DEBUG_TYPE:=off}"
@@ -107,7 +113,7 @@ begins_with_short_option()
 print_help ()
 {
 	echo "The general script's help msg"
-	printf 'Usage: %s [--prg <arg>] [--cc <arg>] [--yacc <arg>] [--lex <arg>] [--prefix <arg>] [--soundpipe_lib <arg>] [--soundpipe_inc <arg>] [--(no-)double] [--(no-)coverage] [--(no-)memcheck] [--d_func <arg>] [--(no-)dummy] [--dummy-inc <arg>] [--dummy-lib <arg>] [--(no-)spa] [--spa-inc <arg>] [--spa-lib <arg>] [--(no-)sndfile] [--sndfile-inc <arg>] [--sndfile-lib <arg>] [--(no-)alsa] [--alsa-inc <arg>] [--alsa-lib <arg>] [--(no-)jack] [--jack-inc <arg>] [--jack-lib <arg>] [--(no-)portaudio] [--portaudio-inc <arg>] [--portaudio-lib <arg>] [--(no-)soundio] [--soundio-inc <arg>] [--soundio-lib <arg>] [--(no-)pulse] [--pulse-inc <arg>] [--pulse-lib <arg>] [--(no-)sles] [--sles-inc <arg>] [--sles-lib <arg>] [--add <arg>] [--(no-)debug-type] [--(no-)debug-instr] [--(no-)debug-stack] [-h|--help]\n' "$0"
+	printf 'Usage: %s [--prg <arg>] [--cc <arg>] [--yacc <arg>] [--lex <arg>] [--prefix <arg>] [--soundpipe_lib <arg>] [--soundpipe_inc <arg>] [--(no-)double] [--(no-)coverage] [--(no-)memcheck] [--d_func <arg>] [--(no-)dummy] [--dummy-inc <arg>] [--dummy-lib <arg>] [--(no-)spa] [--spa-inc <arg>] [--spa-lib <arg>] [--(no-)sndfile] [--sndfile-inc <arg>] [--sndfile-lib <arg>] [--(no-)alsa] [--alsa-inc <arg>] [--alsa-lib <arg>] [--(no-)jack] [--jack-inc <arg>] [--jack-lib <arg>] [--(no-)portaudio] [--portaudio-inc <arg>] [--portaudio-lib <arg>] [--(no-)soundio] [--soundio-inc <arg>] [--soundio-lib <arg>] [--(no-)pulse] [--pulse-inc <arg>] [--pulse-lib <arg>] [--(no-)sles] [--sles-inc <arg>] [--sles-lib <arg>] [--(no-)aaudio] [--aaudio-inc <arg>] [--aaudio-lib <arg>] [--add <arg>] [--(no-)debug-type] [--(no-)debug-instr] [--(no-)debug-stack] [-h|--help]\n' "$0"
 	printf "\t%s\n" "--prg: value for PRG (default: 'gwion')"
 	printf "\t%s\n" "--cc: value for CC (default: 'gcc')"
 	printf "\t%s\n" "--yacc: value for YACC (default: 'yacc')"
@@ -146,6 +152,9 @@ print_help ()
 	printf "\t%s\n" "--sles,--no-sles: enable sles (off by default)"
 	printf "\t%s\n" "--sles-inc: Directories where to look for include files for sles (empty by default)"
 	printf "\t%s\n" "--sles-lib: sles library (default: '-lOpenSLES')"
+	printf "\t%s\n" "--aaudio,--no-aaudio: enable aaudio (off by default)"
+	printf "\t%s\n" "--aaudio-inc: Directories where to look for include files for aaudio (empty by default)"
+	printf "\t%s\n" "--aaudio-lib: aaudio library (default: '-laaudio')"
 	printf "\t%s\n" "--add: add path (default: 'add')"
 	printf "\t%s\n" "--debug-type,--no-debug-type: debug type (off by default)"
 	printf "\t%s\n" "--debug-instr,--no-debug-instr: debug instr (off by default)"
@@ -465,6 +474,30 @@ do
 			fi
 			_arg_sles_lib="$_val"
 			;;
+		--no-aaudio|--aaudio)
+			_arg_aaudio="on"
+			test "${1:0:5}" = "--no-" && _arg_aaudio="off"
+			;;
+		--aaudio-inc|--aaudio-inc=*)
+			_val="${_key##--aaudio-inc=}"
+			if test "$_val" = "$_key"
+			then
+				test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+				_val="$2"
+				shift
+			fi
+			_arg_aaudio_inc+=("$_val")
+			;;
+		--aaudio-lib|--aaudio-lib=*)
+			_val="${_key##--aaudio-lib=}"
+			if test "$_val" = "$_key"
+			then
+				test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+				_val="$2"
+				shift
+			fi
+			_arg_aaudio_lib="$_val"
+			;;
 		--add|--add=*)
 			_val="${_key##--add=}"
 			if test "$_val" = "$_key"
@@ -508,7 +541,7 @@ to_upper(){
 
 config_check() {
 
-VALID_DRIVER=" dummy spa sndfile alsa jack portaudio soundio pulse sles"
+VALID_DRIVER=" dummy spa sndfile alsa jack portaudio soundio pulse sles aaudio"
 grep "$_arg_d_func" <<<  "$VALID_DRIVER" > /dev/null || { echo "invalid default driver";exit 1; }
 
 if [ "$_arg_double" = "on" ]; then _CFLAGS+=" -DUSE_DOUBLE -DSPFLOAT=double";fi
@@ -560,7 +593,7 @@ do
 	echo "GWION_$(to_upper "$key")_DIR ?= \${PREFIX}/lib/Gwion/${val}"
 done
 printf "\n# handle libraries\n"
-for iter in dummy spa sndfile alsa jack portaudio soundio pulse sles
+for iter in dummy spa sndfile alsa jack portaudio soundio pulse sles aaudio
 do
 	echo "$(to_upper $iter)_D ?= $(eval echo \$_arg_$iter)"
 done
@@ -591,7 +624,7 @@ echo "drvr_src := src/drvr/driver.c"
 make_add() {
 
 printf "\n# add libraries\n"
-for iter in dummy:on:: spa:on:: sndfile:on:'/usr/include','/usr/local/include':-lsndfile alsa:on::-lasound jack:off::-ljack portaudio:off::-lportaudio soundio:off::-lsoundio pulse:off::-lpulse-simple sles:off::-lOpenSLES
+for iter in dummy:on:: spa:on:: sndfile:on:'/usr/include','/usr/local/include':-lsndfile alsa:on::-lasound jack:off::-ljack portaudio:off::-lportaudio soundio:off::-lsoundio pulse:off::-lpulse-simple sles:off::-lOpenSLES aaudio:off::-laaudio
 do
 	key=$(echo "$iter" | cut -d ':' -f 1)
 	val=$(echo "$iter" | cut -d ':' -f 2)
